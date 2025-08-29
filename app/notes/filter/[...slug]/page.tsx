@@ -1,37 +1,49 @@
-import { fetchNotes } from '@/lib/api';
-import NotesClient from './Notes.client';
-import {
-  dehydrate,
-  HydrationBoundary,
-  QueryClient,
-} from '@tanstack/react-query';
+import { fetchNoteById } from '../../../../lib/api';
+import { QueryClient, dehydrate, HydrationBoundary } from '@tanstack/react-query';
+import NoteDetailsClient from '../../[id]/NoteDetails.client';
+import type { Metadata } from 'next';
 
-export default async function NotesByTags({
-  params,
-}: { params: Promise<{ slug: string[] }> }) {
-  const { slug } = await params;
+// 1. Інтерфейс для пропсів сторінки
+interface NoteDetailsProps {
+    params: {
+        id: string;
+    };
+}
 
-  const initialPage = 1;
-  const initialSearch = '';
-  const perPage = 12;
-  const tag = slug?.[0] === 'All' ? undefined : slug?.[0];
+// 2. Асинхронна функція для генерації метаданих
+export async function generateMetadata({ params }: NoteDetailsProps): Promise<Metadata> {
+  const note = await fetchNoteById(params.id);
+  const title = note.title;
+  const description = note.content.substring(0, 100) + '...';
 
-  const queryClient = new QueryClient();
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url: `https://08-zustand-snowy-kappa.vercel.app/notes/${params.id}`,
+      images: 'https://ac.goit.global/fullstack/react/notehub-og-meta.jpg',
+    },
+  };
+}
 
-  await queryClient.prefetchQuery({
-    queryKey: ['notes', { search: initialSearch, page: initialPage, perPage, tag }],
-    queryFn: () =>
-      fetchNotes({
-        search: initialSearch,
-        page: initialPage,
-        perPage,
-        tag,
-      }),
-  });
+// 3. Асинхронний компонент сторінки
+export default async function NoteDetails({ params }: NoteDetailsProps) {
+    const { id } = params;
 
-  return (
-    <HydrationBoundary state={dehydrate(queryClient)}>
-      <NotesClient tag={tag} />
-    </HydrationBoundary>
-  );
+    const queryClient = new QueryClient();
+
+    // 4. Попереднє завантаження даних на сервері
+    await queryClient.prefetchQuery({
+        queryKey: ["note", id],
+        queryFn: () => fetchNoteById(id),
+    });
+
+    return (
+        // 5. Передача даних клієнтському компоненту
+        <HydrationBoundary state={dehydrate(queryClient)}>
+            <NoteDetailsClient id={id} />
+        </HydrationBoundary>
+    );
 }
