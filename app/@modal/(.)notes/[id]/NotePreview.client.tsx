@@ -1,4 +1,5 @@
 'use client';
+
 import { fetchNoteById } from '@/lib/api';
 import Modal from '@/components/Modal/Modal';
 import css from './NotePreview.module.css';
@@ -6,26 +7,20 @@ import { useQuery } from '@tanstack/react-query';
 import { useParams, useRouter } from 'next/navigation';
 import Loading from '@/app/loading';
 import ErrorMessage from '@/components/ErrorMessage/ErrorMessage';
-// import NoteDetailsClient from '@/app/notes/[id]/NoteDetails.client';
-
 
 export default function NotePreview() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const close = () => router.back();
 
-  const {
-    data: note,
-    isPending,
-    error,
-  } = useQuery({
+  const { data: note, isLoading, error } = useQuery({
     queryKey: ['note', id],
     queryFn: () => fetchNoteById(id),
     refetchOnMount: false,
     enabled: !!id,
   });
 
-  if (isPending) return <Loading />;
+  if (isLoading) return <Loading />;
   if (error || !note) return <ErrorMessage />;
 
   return (
